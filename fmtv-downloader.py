@@ -158,4 +158,32 @@ if __name__ == "__main__":
             # Get the most recent track
             if recent_tracks:
                 most_recent_track = recent_tracks[0]
- 
+                song_title = most_recent_track['name']
+                artist = most_recent_track['artist']['#text']
+                album = most_recent_track.get('album', {}).get('#text', '')
+
+                # Check if the most recent track is different from the last downloaded track
+                if most_recent_track != last_downloaded_track:
+                    last_downloaded_track = most_recent_track
+
+                    # Check if the video file already exists
+                    file_name = f'{artist} - {song_title}.mp4'
+                    downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
+                    if not os.path.exists(downloaded_file):
+                        # Search and download the official video
+                        video_url = search_official_video(song_title, artist)
+                        if video_url:
+                            logger.info(f'Found official video: {video_url}')
+                            genre = get_track_info(artist, song_title)
+                            download_song(video_url, song_title, artist, album, genre)
+                        else:
+                            logger.info('No official video found')
+                    else:
+                        logger.info(f'Video already downloaded: {downloaded_file}')
+            else:
+                logger.info('No recent tracks found')
+
+            time.sleep(POLLING_INTERVAL)
+        except Exception as e:
+            logger.error(f'An error occurred: {e}')
+            time.sleep(POLLING_INTERVAL)
