@@ -1,0 +1,12 @@
+version: '3.8'
+
+services:
+  fmtv-downloader:
+    image: mmagtech/fmtv-downloader:latest
+    environment:
+      - LASTFM_USERNAME=your_lastfm_username
+      - LASTFM_API_KEY=your_lastfm_api_key
+      - DOWNLOAD_PATH=/data  # Optional: Specify download path
+    volumes:
+      - ./local/data:/data  # Mount local directory to store downloaded videos
+  # Add more configuration as needed
