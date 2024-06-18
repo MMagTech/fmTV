@@ -15,6 +15,10 @@ USERNAME = os.getenv('LASTFM_USERNAME', 'your_lastfm_username')
 DOWNLOAD_PATH = os.getenv('DOWNLOAD_PATH', '/downloads')
 APP_DATA_PATH = os.getenv('APP_DATA_PATH', '/appdata')
 POLLING_INTERVAL = int(os.getenv('POLLING_INTERVAL', '300'))  # Default to 300 seconds (5 minutes)
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+
+if not YOUTUBE_API_KEY:
+    raise ValueError("No YOUTUBE_API_KEY found in environment variables")
 
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY', 'your_youtube_api_key')
 
