@@ -12,10 +12,9 @@ USERNAME = os.getenv('LASTFM_USERNAME', 'your_lastfm_username')
 DOWNLOAD_PATH = os.getenv('DOWNLOAD_PATH', '/downloads')
 APP_DATA_PATH = os.getenv('APP_DATA_PATH', '/appdata')
 POLLING_INTERVAL = int(os.getenv('POLLING_INTERVAL', '300'))  # Default to 300 seconds (5 minutes)
-START_TIMESTAMP = int(os.getenv('START_TIMESTAMP', time.time()))  # Default to current time
 
 LASTFM_URL = f'http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user={USERNAME}&api_key={API_KEY}&format=json'
-LASTFM_TRACK_INFO_URL = f'http://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key={API_KEY}&format=json&artist={{{artist}}}&track={{{track}}}'
+LASTFM_TRACK_INFO_URL = f'http://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key={API_KEY}&format=json&artist={{artist}}&track={{track}}'
 
 # Configure logging
 log_file_path = os.path.join(APP_DATA_PATH, 'downloader.log')
@@ -95,28 +94,35 @@ def download_song(video_url, song_title, artist, album, genre):
     logger.info(f'Successfully processed {song_title} by {artist}')
 
 if __name__ == "__main__":
-    last_downloaded_timestamp = START_TIMESTAMP
+    last_downloaded_track = None
 
     while True:
         logger.info('Polling Last.fm for recent tracks')
         recent_tracks = get_recent_tracks()
 
-        # Iterate through all tracks starting from the last downloaded timestamp
-        for track in recent_tracks:
-            timestamp = int(track.get('date', {}).get('uts', 0))
+        # Get the most recent track
+        if recent_tracks:
+            most_recent_track = recent_tracks[0]
+            song_title = most_recent_track['name']
+            artist = most_recent_track['artist']['#text']
+            album = most_recent_track.get('album', {}).get('#text', '')
 
-            # Check if the track's timestamp is greater than the last downloaded timestamp
-            if timestamp > last_downloaded_timestamp:
-                song_title = track['name']
-                artist = track['artist']['#text']
-                album = track.get('album', {}).get('#text', '')
+            # Check if the most recent track is different from the last downloaded track
+            if most_recent_track != last_downloaded_track:
+                last_downloaded_track = most_recent_track
 
-                # Search and download the official video
-                video_url = search_official_video(song_title, artist)
-                if video_url:
-                    logger.info(f'Found official video: {video_url}')
-                    genre = get_track_info(artist, song_title)
-                    download_song(video_url, song_title, artist, album, genre)
-                    last_downloaded_timestamp = timestamp  # Update last downloaded timestamp
+                # Check if the video file already exists
+                downloaded_file = os.path.join(DOWNLOAD_PATH, f'{song_title}.mp4')
+                if not os.path.exists(downloaded_file):
+                    # Search and download the official video
+                    video_url = search_official_video(song_title, artist)
+                    if video_url:
+                        logger.info(f'Found official video: {video_url}')
+                        genre = get_track_info(artist, song_title)
+                        download_song(video_url, song_title, artist, album, genre)
+                    else:
+                        logger.info('No official video found')
+                else:
+                    logger.info(f'Video already downloaded: {downloaded_file}')
 
         time.sleep(POLLING_INTERVAL)
