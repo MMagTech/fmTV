@@ -35,6 +35,34 @@ The application requires the following environment variables to be set:
 - `POLLING_INTERVAL`: Interval (in seconds) between Last.fm API polls (`300` seconds by default).
 - `YOUTUBE_API_KEY` = Google Developer APIU key for Youtube Data API v3
 
+### Obtain an API key from Last.fm
+
+This script assumes you already have a Last.fm account and are scrobbling succesfully
+
+**Log In:**
+Log in to your Last.fm account.
+
+**Go to the API Page:**
+Navigate to the Last.fm API page by going to https://www.last.fm/api.
+
+**Create an API Account:**
+On the API page, you’ll see an option to create an API account. Click on "Create API account."
+
+**Fill Out the Application Form:**
+You will be asked to fill out a form with details about your application. Provide the following information:
+
+Application Name: A name for your application
+Application Description: A brief description of what your application does.
+Application Website: Not Applicable
+Application Redirect URI: Not Applicable
+Agreement to Terms: Check the box to agree to the API Terms of Use.
+
+**Submit the Form:**
+After filling out the form, submit it. Last.fm will process your request, and once approved, you will receive an API key.
+
+**Access Your API Key:**
+After approval, you can access your API key from the API page under your account.
+
 ### Obtaining a Developer Key from Google Developer Console
 
 Used for downloading metadata and setting thumbnail
@@ -49,6 +77,7 @@ Go to the Google Developer Console:
 Click on the project drop-down menu at the top of the page.
 Click on "New Project".
 Enter a project name and click "Create".
+
 **Enable YouTube Data API:**
 
 With your new project selected, go to the left-hand menu and click on "Library".
