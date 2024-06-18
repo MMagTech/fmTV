@@ -33,3 +33,7 @@ The application requires the following environment variables to be set:
 - `DOWNLOAD_PATH`: Directory where downloaded videos will be saved (`/downloads` by default).
 - `APP_DATA_PATH`: Directory for storing application data and logs (`/appdata` by default).
 - `POLLING_INTERVAL`: Interval (in seconds) between Last.fm API polls (`300` seconds by default).
+- START_TIMESTAMP=1624147200  # Example start timestamp (replace with your desired value in UNIX time Format)
+
+### UNIX Time Format Website
+https://www.unixtimestamp.com/
