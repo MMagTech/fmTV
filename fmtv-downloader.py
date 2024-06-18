@@ -20,8 +20,6 @@ YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
 if not YOUTUBE_API_KEY:
     raise ValueError("No YOUTUBE_API_KEY found in environment variables")
 
-YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY', 'your_youtube_api_key')
-
 LASTFM_URL = f'http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user={USERNAME}&api_key={API_KEY}&format=json'
 LASTFM_TRACK_INFO_URL = f'http://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key={API_KEY}&format=json&artist={{artist}}&track={{track}}'
 
@@ -63,7 +61,7 @@ def search_official_video(song_title, artist):
         'quiet': True,
         'default_search': 'ytsearch',
         'noplaylist': True,
-        'format': 'best[ext=mp4]',
+        'format': 'bestvideo+bestaudio/best',
         'extract_flat': 'in_playlist',
     }
     with YoutubeDL(ydl_opts) as ydl:
@@ -82,12 +80,14 @@ def download_thumbnail(thumbnail_url, output_path):
     return None
 
 def set_video_thumbnail(video_path, thumbnail_path):
+    temp_video_path = video_path.replace('.mp4', '_with_thumbnail.mp4')
     command = [
         'ffmpeg', '-i', video_path, '-i', thumbnail_path,
         '-map', '0', '-map', '1', '-c', 'copy',
-        '-disposition:1', 'attached_pic', video_path
+        '-disposition:1', 'attached_pic', temp_video_path
     ]
     subprocess.run(command, check=True)
+    os.replace(temp_video_path, video_path)
 
 def get_youtube_metadata(video_id):
     youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
@@ -103,15 +103,34 @@ def get_youtube_metadata(video_id):
     return None, None, None, None
 
 def download_song(video_url, song_title, artist, album, genre):
-    file_name = f'{artist} - {song_title}.mp4'
-    downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
+    video_file_name = f'{artist} - {song_title}.mp4'
+    audio_file_name = f'{artist} - {song_title}.m4a'
+    downloaded_video = os.path.join(DOWNLOAD_PATH, video_file_name)
+    downloaded_audio = os.path.join(DOWNLOAD_PATH, audio_file_name)
+    final_file = os.path.join(DOWNLOAD_PATH, video_file_name)
 
-    ydl_opts = {
-        'format': 'best',
-        'outtmpl': downloaded_file,
+    ydl_opts_video = {
+        'format': 'bestvideo',
+        'outtmpl': downloaded_video,
     }
-    with YoutubeDL(ydl_opts) as ydl:
+    ydl_opts_audio = {
+        'format': 'bestaudio',
+        'outtmpl': downloaded_audio,
+    }
+
+    with YoutubeDL(ydl_opts_video) as ydl:
         ydl.download([video_url])
+
+    with YoutubeDL(ydl_opts_audio) as ydl:
+        ydl.download([video_url])
+
+    # Merge video and audio
+    command = [
+        'ffmpeg', '-i', downloaded_video, '-i', downloaded_audio,
+        '-c:v', 'copy', '-c:a', 'aac', '-strict', 'experimental',
+        final_file
+    ]
+    subprocess.run(command, check=True)
 
     # Extract video ID from the URL
     video_id = video_url.split('v=')[-1]
@@ -120,9 +139,13 @@ def download_song(video_url, song_title, artist, album, genre):
     if thumbnail_url:
         thumbnail_path = download_thumbnail(thumbnail_url, DOWNLOAD_PATH)
         if thumbnail_path:
-            set_video_thumbnail(downloaded_file, thumbnail_path)
+            set_video_thumbnail(final_file, thumbnail_path)
 
     logger.info(f'Successfully processed {song_title} by {artist}')
+
+    # Cleanup temporary files
+    os.remove(downloaded_video)
+    os.remove(downloaded_audio)
 
 if __name__ == "__main__":
     last_downloaded_track = None
@@ -135,32 +158,4 @@ if __name__ == "__main__":
             # Get the most recent track
             if recent_tracks:
                 most_recent_track = recent_tracks[0]
-                song_title = most_recent_track['name']
-                artist = most_recent_track['artist']['#text']
-                album = most_recent_track.get('album', {}).get('#text', '')
-
-                # Check if the most recent track is different from the last downloaded track
-                if most_recent_track != last_downloaded_track:
-                    last_downloaded_track = most_recent_track
-
-                    # Check if the video file already exists
-                    file_name = f'{artist} - {song_title}.mp4'
-                    downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
-                    if not os.path.exists(downloaded_file):
-                        # Search and download the official video
-                        video_url = search_official_video(song_title, artist)
-                        if video_url:
-                            logger.info(f'Found official video: {video_url}')
-                            genre = get_track_info(artist, song_title)
-                            download_song(video_url, song_title, artist, album, genre)
-                        else:
-                            logger.info('No official video found')
-                    else:
-                        logger.info(f'Video already downloaded: {downloaded_file}')
-            else:
-                logger.info('No recent tracks found')
-
-            time.sleep(POLLING_INTERVAL)
-        except Exception as e:
-            logger.error(f'An error occurred: {e}')
-            time.sleep(POLLING_INTERVAL)
+ 
