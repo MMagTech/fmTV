@@ -5,6 +5,8 @@ import subprocess
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from yt_dlp import YoutubeDL
+from PIL import Image
+from io import BytesIO
 
 # Environment variables
 API_KEY = os.getenv('LASTFM_API_KEY', 'your_lastfm_api_key')
@@ -44,58 +46,60 @@ def get_track_info(artist, track):
         data = response.json()
         if 'track' in data:
             track_info = data['track']
-            genre = track_info['toptags']['tag'][0]['name'] if track_info['toptags']['tag'] else ''
+            genre = track_info['toptags']['tag'][0]['name'] if track_info['toptags']['tag'] else 'Unknown'
             return genre
-    logger.error(f'Failed to fetch track info for {artist} - {track}: {response.status_code}')
-    return ''
+    return 'Unknown'
 
 def search_official_video(song_title, artist):
-    search_query = f'{artist} {song_title} official video'
-    search_url = f'https://www.youtube.com/results?search_query={search_query}'
+    query = f'{artist} {song_title} official music video'
     ydl_opts = {
         'quiet': True,
+        'default_search': 'ytsearch',
+        'noplaylist': True,
+        'format': 'best[ext=mp4]',
         'extract_flat': 'in_playlist',
-        'force_generic_extractor': True
     }
     with YoutubeDL(ydl_opts) as ydl:
-        result = ydl.extract_info(search_url, download=False)
-        if 'entries' in result and result['entries']:
-            for entry in result['entries']:
-                title = entry['title'].lower()
-                if 'official' in title and 'video' in title and artist.lower() in title and song_title.lower() in title:
-                    return f"https://www.youtube.com/watch?v={entry['id']}"
-    logger.info(f'No official video found for {artist} - {song_title}')
+        results = ydl.extract_info(query, download=False)
+        if 'entries' in results:
+            return results['entries'][0]['url']
     return None
+
+def download_thumbnail(thumbnail_url, output_path):
+    response = requests.get(thumbnail_url)
+    if response.status_code == 200:
+        image = Image.open(BytesIO(response.content))
+        thumbnail_path = os.path.join(output_path, 'thumbnail.jpg')
+        image.save(thumbnail_path)
+        return thumbnail_path
+    return None
+
+def set_video_thumbnail(video_path, thumbnail_path):
+    command = [
+        'ffmpeg', '-i', video_path, '-i', thumbnail_path,
+        '-map', '0', '-map', '1', '-c', 'copy',
+        '-disposition:1', 'attached_pic', video_path
+    ]
+    subprocess.run(command, check=True)
 
 def download_song(video_url, song_title, artist, album, genre):
     file_name = f'{artist} - {song_title}.mp4'
+    downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
+
     ydl_opts = {
-        'format': 'bestvideo+bestaudio/best',
-        'outtmpl': os.path.join(DOWNLOAD_PATH, file_name),
-        'merge_output_format': 'mp4'
+        'format': 'best',
+        'outtmpl': downloaded_file,
     }
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([video_url])
 
-    downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
+    # Download the thumbnail
+    thumbnail_url = f'https://img.youtube.com/vi/{video_url.split("v=")[-1]}/maxresdefault.jpg'
+    thumbnail_path = download_thumbnail(thumbnail_url, DOWNLOAD_PATH)
+    
+    if thumbnail_path:
+        set_video_thumbnail(downloaded_file, thumbnail_path)
 
-    # Add metadata
-    tagged_file_name = f'{artist} - {song_title}_tagged.mp4'
-    ffmpeg_command = [
-        'ffmpeg',
-        '-i', downloaded_file,
-        '-metadata', f'title={song_title}',
-        '-metadata', f'artist={artist}',
-        '-metadata', f'album={album}',
-        '-metadata', f'genre={genre}',
-        '-codec', 'copy',
-        os.path.join(DOWNLOAD_PATH, tagged_file_name)
-    ]
-    logger.info(f'Adding metadata for {song_title} by {artist}')
-    subprocess.run(ffmpeg_command, check=True)
-
-    # Replace the original file with the tagged file
-    os.rename(os.path.join(DOWNLOAD_PATH, tagged_file_name), downloaded_file)
     logger.info(f'Successfully processed {song_title} by {artist}')
 
 if __name__ == "__main__":
