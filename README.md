@@ -8,8 +8,8 @@ The `fmTV Downloader` is a Python-based application designed to fetch and downlo
 
 ## Features
 
-- **Track Retrieval:** Polls Last.fm for recent tracks.
-- **Video Search and Download:** Searches YouTube for official music videos and downloads them.
+- **Track Retrieval:** Polls Last.fm for recent tracks on a set interval.
+- **Video Search and Download:** Searches YouTube for hihest quality video and audio for a music video and downloads and merges them to .mp4
 - **Metadata Tagging:** Tags downloaded videos with title, artist, album, and genre information.
 - **Logging and Error Handling:** Maintains logs and handles errors gracefully.
 
@@ -33,7 +33,4 @@ The application requires the following environment variables to be set:
 - `DOWNLOAD_PATH`: Directory where downloaded videos will be saved (`/downloads` by default).
 - `APP_DATA_PATH`: Directory for storing application data and logs (`/appdata` by default).
 - `POLLING_INTERVAL`: Interval (in seconds) between Last.fm API polls (`300` seconds by default).
-- START_TIMESTAMP=1624147200  # Example start timestamp (replace with your desired value in UNIX time Format)
 
-### UNIX Time Format Website
-https://www.unixtimestamp.com/
