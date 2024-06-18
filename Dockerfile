@@ -22,4 +22,4 @@ COPY . /app
 WORKDIR /app
 
 # Default command to run your application
-CMD ["python", "your_main_script.py"]
+CMD ["python", "fmtv-downloader.py"]
