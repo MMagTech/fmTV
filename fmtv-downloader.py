@@ -60,21 +60,26 @@ def search_official_video(song_title, artist):
     with YoutubeDL(ydl_opts) as ydl:
         result = ydl.extract_info(search_url, download=False)
         if 'entries' in result and result['entries']:
-            return f"https://www.youtube.com/watch?v={result['entries'][0]['id']}"
+            for entry in result['entries']:
+                title = entry['title'].lower()
+                if 'official' in title and 'video' in title:
+                    return f"https://www.youtube.com/watch?v={entry['id']}"
     logger.info(f'No official video found for {artist} - {song_title}')
     return None
 
 def download_song(video_url, song_title, artist, album, genre):
+    file_name = f'{artist} - {song_title}.mp4'
     ydl_opts = {
         'format': 'best',
-        'outtmpl': os.path.join(DOWNLOAD_PATH, f'{song_title}.mp4')
+        'outtmpl': os.path.join(DOWNLOAD_PATH, file_name)
     }
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([video_url])
 
-    downloaded_file = os.path.join(DOWNLOAD_PATH, f'{song_title}.mp4')
+    downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
 
     # Add metadata
+    tagged_file_name = f'{artist} - {song_title}_tagged.mp4'
     ffmpeg_command = [
         'ffmpeg',
         '-i', downloaded_file,
@@ -83,13 +88,13 @@ def download_song(video_url, song_title, artist, album, genre):
         '-metadata', f'album={album}',
         '-metadata', f'genre={genre}',
         '-codec', 'copy',
-        os.path.join(DOWNLOAD_PATH, f'{song_title}_tagged.mp4')
+        os.path.join(DOWNLOAD_PATH, tagged_file_name)
     ]
     logger.info(f'Adding metadata for {song_title} by {artist}')
     subprocess.run(ffmpeg_command, check=True)
 
     # Replace the original file with the tagged file
-    os.rename(os.path.join(DOWNLOAD_PATH, f'{song_title}_tagged.mp4'), downloaded_file)
+    os.rename(os.path.join(DOWNLOAD_PATH, tagged_file_name), downloaded_file)
     logger.info(f'Successfully processed {song_title} by {artist}')
 
 if __name__ == "__main__":
@@ -112,7 +117,8 @@ if __name__ == "__main__":
                     last_downloaded_track = most_recent_track
 
                     # Check if the video file already exists
-                    downloaded_file = os.path.join(DOWNLOAD_PATH, f'{song_title}.mp4')
+                    file_name = f'{artist} - {song_title}.mp4'
+                    downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
                     if not os.path.exists(downloaded_file):
                         # Search and download the official video
                         video_url = search_official_video(song_title, artist)
@@ -126,7 +132,7 @@ if __name__ == "__main__":
                         logger.info(f'Video already downloaded: {downloaded_file}')
             else:
                 logger.info('No recent tracks found')
-                
+
             time.sleep(POLLING_INTERVAL)
         except Exception as e:
             logger.error(f'An error occurred: {e}')
