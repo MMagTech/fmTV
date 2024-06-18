@@ -1,44 +1,35 @@
-# fmTV
+# fmTV Downloader
 
-fmTV is a tool for automatically downloading music videos from YouTube based on your LastFM scrobbles.
+![fmTV Downloader](assets/icon.png)
 
-## Table of Contents
+## Overview
 
-- [Description](#description)
-- [Features](#features)
-- [Installation](#installation)
-  - [Prerequisites](#prerequisites)
-  - [Using Docker](#using-docker)
-  - [Manual Setup](#manual-setup)
-- [Configuration](#configuration)
-  - [Environment Variables](#environment-variables)
-- [Usage](#usage)
-- [Contributing](#contributing)
-- [License](#license)
-
-## Description
-
-fmTV is a Python application that interfaces with LastFM to track music you listen to and automatically downloads corresponding music videos from YouTube using `yt-dlp`. This README provides instructions for setting up and running fmTV using Docker or manually.
+The `fmTV Downloader` is a Python-based application designed to fetch and download music videos based on data from Last.fm. It uses the Last.fm API to retrieve recently played tracks and searches YouTube for official music videos matching those tracks. The downloaded videos are tagged with metadata and stored in a specified directory.
 
 ## Features
 
-- Automatically downloads music videos from YouTube based on LastFM scrobbles.
-- Uses `yt-dlp` for flexible downloading options.
-- Configurable via environment variables.
+- **Track Retrieval:** Polls Last.fm for recent tracks.
+- **Video Search and Download:** Searches YouTube for official music videos and downloads them.
+- **Metadata Tagging:** Tags downloaded videos with title, artist, album, and genre information.
+- **Logging and Error Handling:** Maintains logs and handles errors gracefully.
 
-## Installation
+## Setup and Installation
 
 ### Prerequisites
 
-Before installing fmTV, ensure you have the following installed:
+- Docker
+- Docker Compose
+- Last.fm Username
+- Last.fm API Key
 
-- Docker (if using Docker installation)
-- Python 3.9 or higher (if using manual setup)
 
-### Using Docker
 
-1. **Clone the repository:**
+### Environment Variables
 
-   ```bash
-   git clone https://github.com/MMagTech/fmTV.git
-   cd fmTV
+The application requires the following environment variables to be set:
+
+- `LASTFM_API_KEY`: Your Last.fm API key for accessing Last.fm services.
+- `LASTFM_USERNAME`: Your Last.fm username to fetch recent tracks.
+- `DOWNLOAD_PATH`: Directory where downloaded videos will be saved (`/downloads` by default).
+- `APP_DATA_PATH`: Directory for storing application data and logs (`/appdata` by default).
+- `POLLING_INTERVAL`: Interval (in seconds) between Last.fm API polls (`300` seconds by default).
