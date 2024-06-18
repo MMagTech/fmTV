@@ -1,2 +1,4 @@
 requests
 yt-dlp
+Pillow
+google-api-python-client

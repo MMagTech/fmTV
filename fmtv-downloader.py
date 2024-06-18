@@ -7,6 +7,7 @@ from logging.handlers import TimedRotatingFileHandler
 from yt_dlp import YoutubeDL
 from PIL import Image
 from io import BytesIO
+from googleapiclient.discovery import build
 
 # Environment variables
 API_KEY = os.getenv('LASTFM_API_KEY', 'your_lastfm_api_key')
@@ -14,6 +15,8 @@ USERNAME = os.getenv('LASTFM_USERNAME', 'your_lastfm_username')
 DOWNLOAD_PATH = os.getenv('DOWNLOAD_PATH', '/downloads')
 APP_DATA_PATH = os.getenv('APP_DATA_PATH', '/appdata')
 POLLING_INTERVAL = int(os.getenv('POLLING_INTERVAL', '300'))  # Default to 300 seconds (5 minutes)
+
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY', 'your_youtube_api_key')
 
 LASTFM_URL = f'http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user={USERNAME}&api_key={API_KEY}&format=json'
 LASTFM_TRACK_INFO_URL = f'http://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key={API_KEY}&format=json&artist={{artist}}&track={{track}}'
@@ -82,6 +85,19 @@ def set_video_thumbnail(video_path, thumbnail_path):
     ]
     subprocess.run(command, check=True)
 
+def get_youtube_metadata(video_id):
+    youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
+    request = youtube.videos().list(part='snippet', id=video_id)
+    response = request.execute()
+    if response['items']:
+        video_info = response['items'][0]['snippet']
+        title = video_info['title']
+        description = video_info['description']
+        tags = video_info.get('tags', [])
+        thumbnail_url = video_info['thumbnails']['high']['url']
+        return title, description, tags, thumbnail_url
+    return None, None, None, None
+
 def download_song(video_url, song_title, artist, album, genre):
     file_name = f'{artist} - {song_title}.mp4'
     downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
@@ -93,12 +109,14 @@ def download_song(video_url, song_title, artist, album, genre):
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([video_url])
 
-    # Download the thumbnail
-    thumbnail_url = f'https://img.youtube.com/vi/{video_url.split("v=")[-1]}/maxresdefault.jpg'
-    thumbnail_path = download_thumbnail(thumbnail_url, DOWNLOAD_PATH)
-    
-    if thumbnail_path:
-        set_video_thumbnail(downloaded_file, thumbnail_path)
+    # Extract video ID from the URL
+    video_id = video_url.split('v=')[-1]
+    title, description, tags, thumbnail_url = get_youtube_metadata(video_id)
+
+    if thumbnail_url:
+        thumbnail_path = download_thumbnail(thumbnail_url, DOWNLOAD_PATH)
+        if thumbnail_path:
+            set_video_thumbnail(downloaded_file, thumbnail_path)
 
     logger.info(f'Successfully processed {song_title} by {artist}')
 
