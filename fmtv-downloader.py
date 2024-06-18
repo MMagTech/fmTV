@@ -25,21 +25,35 @@ logger = logging.getLogger()
 logger.setLevel(logging.INFO)
 logger.addHandler(handler)
 
-def get_recent_tracks():
-    response = requests.get(LASTFM_URL)
-    data = response.json()
-    recent_tracks = data['recenttracks']['track']
-    return recent_tracks
+def get_recent_tracks(from_timestamp=None):
+    url = LASTFM_URL
+    if from_timestamp:
+        url += f'&from={from_timestamp}'
+
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        recent_tracks = data['recenttracks']['track']
+        return recent_tracks
+    except Exception as e:
+        logger.error(f"Error fetching recent tracks: {e}")
+        return []
 
 def get_track_info(artist, track):
-    url = LASTFM_TRACK_INFO_URL.format(artist=artist, track=track)
-    response = requests.get(url)
-    data = response.json()
-    if 'track' in data:
-        track_info = data['track']
-        genre = track_info['toptags']['tag'][0]['name'] if track_info['toptags']['tag'] else ''
-        return genre
-    return ''
+    try:
+        url = LASTFM_TRACK_INFO_URL.format(artist=artist, track=track)
+        response = requests.get(url)
+        response.raise_for_status()
+        data = response.json()
+        if 'track' in data:
+            track_info = data['track']
+            genre = track_info['toptags']['tag'][0]['name'] if track_info['toptags']['tag'] else ''
+            return genre
+        return ''
+    except Exception as e:
+        logger.error(f"Error fetching track info for {artist} - {track}: {e}")
+        return ''
 
 def search_official_video(song_title, artist):
     search_query = f'{artist} {song_title} official video'
@@ -51,13 +65,16 @@ def search_official_video(song_title, artist):
         'force_generic_extractor': True
     }
 
-    with YoutubeDL(ydl_opts) as ydl:
-        result = ydl.extract_info(search_url, download=False)
-        if 'entries' in result:
-            for entry in result['entries']:
-                title = entry.get('title', '').lower()
-                if 'official' in title and 'video' in title:
-                    return entry['url']
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            result = ydl.extract_info(search_url, download=False)
+            if 'entries' in result:
+                for entry in result['entries']:
+                    title = entry.get('title', '').lower()
+                    if 'official' in title and 'video' in title:
+                        return entry['url']
+    except Exception as e:
+        logger.error(f"Error searching for official video: {e}")
     return None
 
 def download_song(video_url, song_title, artist, album, genre):
@@ -94,35 +111,37 @@ def download_song(video_url, song_title, artist, album, genre):
     logger.info(f'Successfully processed {song_title} by {artist}')
 
 if __name__ == "__main__":
-    last_downloaded_track = None
+    last_downloaded_timestamp = None
 
     while True:
         logger.info('Polling Last.fm for recent tracks')
-        recent_tracks = get_recent_tracks()
+        
+        # Fetch recent tracks since the last successful download
+        recent_tracks = get_recent_tracks(from_timestamp=last_downloaded_timestamp)
 
-        # Get the most recent track
+        # Process each track
         if recent_tracks:
-            most_recent_track = recent_tracks[0]
-            song_title = most_recent_track['name']
-            artist = most_recent_track['artist']['#text']
-            album = most_recent_track.get('album', {}).get('#text', '')
+            for track in recent_tracks:
+                timestamp = int(track['date']['uts'])
+                if timestamp > last_downloaded_timestamp:
+                    last_downloaded_timestamp = timestamp
+                    
+                    song_title = track['name']
+                    artist = track['artist']['#text']
+                    album = track.get('album', {}).get('#text', '')
 
-            # Check if the most recent track is different from the last downloaded track
-            if most_recent_track != last_downloaded_track:
-                last_downloaded_track = most_recent_track
-
-                # Check if the video file already exists
-                downloaded_file = os.path.join(DOWNLOAD_PATH, f'{song_title}.mp4')
-                if not os.path.exists(downloaded_file):
-                    # Search and download the official video
-                    video_url = search_official_video(song_title, artist)
-                    if video_url:
-                        logger.info(f'Found official video: {video_url}')
-                        genre = get_track_info(artist, song_title)
-                        download_song(video_url, song_title, artist, album, genre)
+                    # Check if the video file already exists
+                    downloaded_file = os.path.join(DOWNLOAD_PATH, f'{song_title}.mp4')
+                    if not os.path.exists(downloaded_file):
+                        # Search and download the official video
+                        video_url = search_official_video(song_title, artist)
+                        if video_url:
+                            logger.info(f'Found official video: {video_url}')
+                            genre = get_track_info(artist, song_title)
+                            download_song(video_url, song_title, artist, album, genre)
+                        else:
+                            logger.info('No official video found')
                     else:
-                        logger.info('No official video found')
-                else:
-                    logger.info(f'Video already downloaded: {downloaded_file}')
+                        logger.info(f'Video already downloaded: {downloaded_file}')
 
         time.sleep(POLLING_INTERVAL)
