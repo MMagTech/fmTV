@@ -10,6 +10,8 @@ services:
       - DOWNLOAD_PATH=/downloads
       - APP_DATA_PATH=/appdata
       - POLLING_INTERVAL=300  # Adjust as needed
+      - START_TIMESTAMP=1624147200  # Example start timestamp (replace with your desired value)
+
     volumes:
       - ./downloads:/downloads  # Directory for downloaded files
       - ./appdata:/appdata  # Directory for app data (logs, etc.)
