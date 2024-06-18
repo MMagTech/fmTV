@@ -1,5 +1,4 @@
 name: Build and Push Docker Image
-name: Build and Push Docker Image
 
 on:
   push:
@@ -25,8 +24,7 @@ jobs:
 
       - name: Build and push Docker image
         run: |
+          docker buildx create --use
           docker buildx build --platform linux/amd64,linux/arm64 \
             -t mmagtech/fmtv-downloader:latest \
             --push .
-
-
