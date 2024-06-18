@@ -124,13 +124,23 @@ def download_song(video_url, song_title, artist, album, genre):
     with YoutubeDL(ydl_opts_audio) as ydl:
         ydl.download([video_url])
 
-    # Merge video and audio
+    # Ensure both files exist before merging
+    if not os.path.exists(downloaded_video) or not os.path.exists(downloaded_audio):
+        logger.error(f"Video or audio file missing for {song_title} by {artist}")
+        return
+
+    # Merge video and audio with color space handling
     command = [
         'ffmpeg', '-i', downloaded_video, '-i', downloaded_audio,
         '-c:v', 'copy', '-c:a', 'aac', '-strict', 'experimental',
+        '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
         final_file
     ]
-    subprocess.run(command, check=True)
+    result = subprocess.run(command, capture_output=True, text=True)
+
+    if result.returncode != 0:
+        logger.error(f"ffmpeg merge failed: {result.stderr}")
+        return
 
     # Extract video ID from the URL
     video_id = video_url.split('v=')[-1]
