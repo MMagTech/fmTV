@@ -1,6 +1,6 @@
 # fmTV Downloader
 
-![bb2080eb-8cd2-4cbe-a253-30398bb5f2be-ezgif com-webp-to-jpg-converter-modified](https://github.com/MMagTech/fmTV/assets/64668236/5e0d6e00-78ec-4e86-a747-372bc53947d0)
+![fmTV Downloader](assets/icon.png)
 
 ## Overview
 
