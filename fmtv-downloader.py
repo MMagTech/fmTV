@@ -5,6 +5,7 @@ import subprocess
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from yt_dlp import YoutubeDL
+from bs4 import BeautifulSoup
 
 # Environment variables
 API_KEY = os.getenv('LASTFM_API_KEY', 'your_lastfm_api_key')
@@ -58,12 +59,14 @@ def search_official_video(song_title, artist):
     logger.info(f'Searching for video: {search_url}')
     response = requests.get(search_url)
     if response.status_code == 200:
-        html = response.text
-        video_id = html.split('href="/watch?v=')[1].split('"')[0]
-        return f'https://www.youtube.com/watch?v={video_id}'
-    else:
-        logger.error(f'Failed to search for video: {response.status_code}')
-        return None
+        soup = BeautifulSoup(response.text, 'html.parser')
+        for link in soup.find_all('a'):
+            href = link.get('href')
+            if href and '/watch?v=' in href:
+                video_id = href.split('/watch?v=')[1]
+                return f'https://www.youtube.com/watch?v={video_id}'
+    logger.error('Failed to find video link in search results')
+    return None
 
 def download_song(video_url, song_title, artist, album, genre):
     logger.info(f'Downloading {song_title} by {artist}')
