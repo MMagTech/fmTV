@@ -57,14 +57,12 @@ def search_official_video(song_title, artist):
         'extract_flat': 'in_playlist',
         'force_generic_extractor': True
     }
-    logger.info(f'Searching YouTube for: {search_query}')
     with YoutubeDL(ydl_opts) as ydl:
         result = ydl.extract_info(search_url, download=False)
         if 'entries' in result and result['entries']:
             for entry in result['entries']:
                 title = entry['title'].lower()
-                if 'official' in title and 'video' in title and artist.lower() in title and song_title.lower() in title:
-                    logger.info(f'Found official video: {title}')
+                if 'official' in title and 'video' in title:
                     return f"https://www.youtube.com/watch?v={entry['id']}"
     logger.info(f'No official video found for {artist} - {song_title}')
     return None
@@ -72,9 +70,8 @@ def search_official_video(song_title, artist):
 def download_song(video_url, song_title, artist, album, genre):
     file_name = f'{artist} - {song_title}.mp4'
     ydl_opts = {
-        'format': 'bestvideo+bestaudio/best',
-        'outtmpl': os.path.join(DOWNLOAD_PATH, file_name),
-        'merge_output_format': 'mp4'
+        'format': 'best',
+        'outtmpl': os.path.join(DOWNLOAD_PATH, file_name)
     }
     with YoutubeDL(ydl_opts) as ydl:
         ydl.download([video_url])
