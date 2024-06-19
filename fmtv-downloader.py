@@ -49,25 +49,45 @@ def get_track_info(artist, track):
     logger.error(f'Failed to fetch track info for {artist} - {track}: {response.status_code}')
     return ''
 
-def search_official_video(song_title, artist):
-    search_query = f'{artist} {song_title} official video'
-    search_url = f'https://www.youtube.com/results?search_query={search_query}'
+def search_video(song_title, artist):
+    search_query = f'{artist} {song_title}'
     ydl_opts = {
-        'quiet': True,
-        'extract_flat': 'in_playlist',
-        'force_generic_extractor': True
+        'format': 'best',
+        'noplaylist': True,
+        'quiet': True
     }
-    logger.info(f'Searching YouTube for: {search_query}')
-    with YoutubeDL(ydl_opts) as ydl:
-        result = ydl.extract_info(search_url, download=False)
-        if 'entries' in result and result['entries']:
-            for entry in result['entries']:
-                title = entry['title'].lower()
-                if 'official' in title and 'video' in title and artist.lower() in title and song_title.lower() in title:
-                    logger.info(f'Found official video: {title}')
-                    return f"https://www.youtube.com/watch?v={entry['id']}"
-    logger.info(f'No official video found for {artist} - {song_title}')
-    return None
+    
+    try:
+        with YoutubeDL(ydl_opts) as ydl:
+            result = ydl.extract_info(f'ytsearch:{search_query}', download=False)['entries']
+            
+            official_videos = [
+                entry for entry in result 
+                if 'official' in entry['title'].lower()
+            ]
+            
+            remaster_videos = []
+            if not official_videos:
+                remaster_videos = [
+                    entry for entry in result 
+                    if 'remaster' in entry['title'].lower() or 'remaster' in entry.get('description', '').lower()
+                ]
+
+            if official_videos:
+                logging.info(f'Found official video: {official_videos[0]["title"]}')
+                return official_videos[0]['webpage_url']
+            elif remaster_videos:
+                logging.info(f'Found remastered video: {remaster_videos[0]["title"]}')
+                return remaster_videos[0]['webpage_url']
+            elif result:
+                logging.info(f'Found other video: {result[0]["title"]}')
+                return result[0]['webpage_url']
+            else:
+                logging.info('No videos found')
+                return None
+    except Exception as e:
+        logging.error(f'Error occurred: {e}')
+        return None
 
 def download_song(video_url, song_title, artist, album, genre):
     file_name = f'{artist} - {song_title}.mp4'
