@@ -4,7 +4,7 @@ import requests
 import subprocess
 import logging
 import numpy as np
-import ffmpeg
+import ffmpeg-python
 
 from logging.handlers import TimedRotatingFileHandler
 from yt_dlp import YoutubeDL
@@ -155,6 +155,16 @@ def is_static_image_for_5_seconds_ffmpeg(video_path):
     except Exception as e:
         logger.error(f"Error checking if video is static image: {e}")
         return False
+        
+def delete_if_static(video_path):
+    if is_static_image_for_5_seconds_ffmpeg(video_path):
+        try:
+            os.remove(video_path)
+            logger.info(f"Deleted static image: {video_path}")
+        except OSError as e:
+            logger.error(f"Error deleting file: {e}")
+    else:
+        logger.info(f"File is not a static image: {video_path}")
 
 if __name__ == "__main__":
     last_downloaded_track = None
