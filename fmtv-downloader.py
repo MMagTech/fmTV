@@ -144,7 +144,7 @@ if __name__ == "__main__":
                     downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
                     if not os.path.exists(downloaded_file):
                         # Search and download the official video
-                        video_url = search_official_video(song_title, artist)
+                        video_url = search_video(song_title, artist)
                         if video_url:
                             logger.info(f'Found official video: {video_url}')
                             genre = get_track_info(artist, song_title)
