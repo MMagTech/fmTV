@@ -5,7 +5,6 @@ import subprocess
 import logging
 from logging.handlers import TimedRotatingFileHandler
 from yt_dlp import YoutubeDL
-from bs4 import BeautifulSoup
 
 # Environment variables
 API_KEY = os.getenv('LASTFM_API_KEY', 'your_lastfm_api_key')
@@ -45,49 +44,61 @@ def get_track_info(artist, track):
         data = response.json()
         if 'track' in data:
             track_info = data['track']
-            genre = track_info['toptags']['tag'][0]['name'] if 'toptags' in track_info and 'tag' in track_info['toptags'] else 'Unknown'
+            genre = track_info['toptags']['tag'][0]['name'] if track_info['toptags']['tag'] else ''
             return genre
-        else:
-            return 'Unknown'
-    else:
-        logger.error(f'Failed to fetch track info: {response.status_code}')
-        return 'Unknown'
+    logger.error(f'Failed to fetch track info for {artist} - {track}: {response.status_code}')
+    return ''
 
 def search_official_video(song_title, artist):
-    query = f'{artist} {song_title} official music video'
-    search_url = f'https://www.youtube.com/results?search_query={query.replace(" ", "+")}'
-    logger.info(f'Searching for video: {search_url}')
-    response = requests.get(search_url)
-    if response.status_code == 200:
-        soup = BeautifulSoup(response.text, 'html.parser')
-        for link in soup.find_all('a'):
-            href = link.get('href')
-            if href and '/watch?v=' in href:
-                video_id = href.split('/watch?v=')[1]
-                return f'https://www.youtube.com/watch?v={video_id}'
-    logger.error('Failed to find video link in search results')
+    search_query = f'{artist} {song_title} official video'
+    search_url = f'https://www.youtube.com/results?search_query={search_query}'
+    ydl_opts = {
+        'quiet': True,
+        'extract_flat': 'in_playlist',
+        'force_generic_extractor': True
+    }
+    logger.info(f'Searching YouTube for: {search_query}')
+    with YoutubeDL(ydl_opts) as ydl:
+        result = ydl.extract_info(search_url, download=False)
+        if 'entries' in result and result['entries']:
+            for entry in result['entries']:
+                title = entry['title'].lower()
+                if 'official' in title and 'video' in title and artist.lower() in title and song_title.lower() in title:
+                    logger.info(f'Found official video: {title}')
+                    return f"https://www.youtube.com/watch?v={entry['id']}"
+    logger.info(f'No official video found for {artist} - {song_title}')
     return None
 
 def download_song(video_url, song_title, artist, album, genre):
-    logger.info(f'Downloading {song_title} by {artist}')
-    download_options = {
-        'format': 'bestvideo[height<=1080]+bestaudio/best',
-        'outtmpl': os.path.join(DOWNLOAD_PATH, f'{artist} - {song_title}.%(ext)s'),
-        'verbose': True,  # Enable verbose logging
-        'logger': logger,  # Use the same logger for yt-dlp
-        'merge_output_format': 'mp4',  # Ensure the final output is in mp4 format
-        'progress_hooks': [my_hook],  # Optional: add a progress hook
+    file_name = f'{artist} - {song_title}.mp4'
+    ydl_opts = {
+        'format': 'bestvideo+bestaudio/best',
+        'outtmpl': os.path.join(DOWNLOAD_PATH, file_name),
+        'merge_output_format': 'mp4'
     }
-    try:
-        with YoutubeDL(download_options) as ydl:
-            ydl.download([video_url])
-        logger.info(f'Successfully downloaded {song_title} by {artist}')
-    except Exception as e:
-        logger.error(f'Failed to download {song_title} by {artist}: {e}')
+    with YoutubeDL(ydl_opts) as ydl:
+        ydl.download([video_url])
 
-def my_hook(d):
-    if d['status'] == 'finished':
-        logger.info('Done downloading, now converting...')
+    downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
+
+    # Add metadata
+    tagged_file_name = f'{artist} - {song_title}_tagged.mp4'
+    ffmpeg_command = [
+        'ffmpeg',
+        '-i', downloaded_file,
+        '-metadata', f'title={song_title}',
+        '-metadata', f'artist={artist}',
+        '-metadata', f'album={album}',
+        '-metadata', f'genre={genre}',
+        '-codec', 'copy',
+        os.path.join(DOWNLOAD_PATH, tagged_file_name)
+    ]
+    logger.info(f'Adding metadata for {song_title} by {artist}')
+    subprocess.run(ffmpeg_command, check=True)
+
+    # Replace the original file with the tagged file
+    os.rename(os.path.join(DOWNLOAD_PATH, tagged_file_name), downloaded_file)
+    logger.info(f'Successfully processed {song_title} by {artist}')
 
 if __name__ == "__main__":
     last_downloaded_track = None
