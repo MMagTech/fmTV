@@ -36,7 +36,7 @@ logger.addHandler(handler)
 def get_recent_tracks():
     logger.info('Fetching recent tracks from Last.fm')
     response = requests.get(LASTFM_URL)
-    if response.status_code == 200):
+    if response.status_code == 200:
         data = response.json()
         recent_tracks = data['recenttracks']['track']
         logger.info(f'Fetched {len(recent_tracks)} tracks')
@@ -48,7 +48,7 @@ def get_recent_tracks():
 def get_track_info(artist, track):
     url = LASTFM_TRACK_INFO_URL.format(artist=artist, track=track)
     response = requests.get(url)
-    if response.status_code == 200):
+    if response.status_code == 200:
         data = response.json()
         if 'track' in data:
             track_info = data['track']
@@ -74,7 +74,7 @@ def search_official_video(song_title, artist):
 
 def download_thumbnail(thumbnail_url, output_path):
     response = requests.get(thumbnail_url)
-    if response.status_code == 200):
+    if response.status_code == 200:
         image = Image.open(BytesIO(response.content))
         thumbnail_path = os.path.join(output_path, 'thumbnail.jpg')
         image.save(thumbnail_path)
