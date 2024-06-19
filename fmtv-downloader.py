@@ -72,38 +72,6 @@ def search_official_video(song_title, artist):
             return results['entries'][0]['url']
     return None
 
-def download_thumbnail(thumbnail_url, output_path):
-    response = requests.get(thumbnail_url)
-    if response.status_code == 200:
-        image = Image.open(BytesIO(response.content))
-        thumbnail_path = os.path.join(output_path, 'thumbnail.jpg')
-        image.save(thumbnail_path)
-        return thumbnail_path
-    return None
-
-def set_video_thumbnail(video_path, thumbnail_path):
-    temp_video_path = video_path.replace('.mp4', '_with_thumbnail.mp4')
-    command = [
-        'ffmpeg', '-i', video_path, '-i', thumbnail_path,
-        '-map', '0', '-map', '1', '-c', 'copy',
-        '-disposition:1', 'attached_pic', temp_video_path
-    ]
-    subprocess.run(command, check=True)
-    os.replace(temp_video_path, video_path)
-
-def get_youtube_metadata(video_id):
-    youtube = build('youtube', 'v3', developerKey=YOUTUBE_API_KEY)
-    request = youtube.videos().list(part='snippet', id=video_id)
-    response = request.execute()
-    if response['items']:
-        video_info = response['items'][0]['snippet']
-        title = video_info['title']
-        description = video_info['description']
-        tags = video_info.get('tags', [])
-        thumbnail_url = video_info['thumbnails']['high']['url']
-        return title, description, tags, thumbnail_url
-    return None, None, None, None
-
 def download_song(video_url, song_title, artist, album, genre):
     video_file_name = f'{artist} - {song_title}.mp4'
     audio_file_name = f'{artist} - {song_title}.m4a'
@@ -145,15 +113,6 @@ def download_song(video_url, song_title, artist, album, genre):
     if merge_result.returncode != 0:
         logger.error(f"ffmpeg merge failed: {merge_result.stderr}")
         return
-
-    # Extract video ID from the URL
-    video_id = video_url.split('v=')[-1]
-    title, description, tags, thumbnail_url = get_youtube_metadata(video_id)
-
-    if thumbnail_url:
-        thumbnail_path = download_thumbnail(thumbnail_url, FINAL_OUTPUT_PATH)
-        if thumbnail_path:
-            set_video_thumbnail(final_file, thumbnail_path)
 
     logger.info(f'Successfully processed {song_title} by {artist}')
 
