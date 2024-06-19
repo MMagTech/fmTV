@@ -63,7 +63,7 @@ def search_official_video(song_title, artist):
             for entry in result['entries']:
                 title = entry['title'].lower()
                 if 'official' in title and 'video' in title and artist.lower() in title and song_title.lower() in title:
-                    return entry['webpage_url']
+                    return entry.get('webpage_url')
     logger.info(f'No official video found for {artist} - {song_title}')
     return None
 
