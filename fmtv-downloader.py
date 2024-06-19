@@ -140,10 +140,10 @@ def is_static_image_for_5_seconds_ffmpeg(video_path):
             out, _ = (
                 ffmpeg
                 .input(video_path, ss=t, vframes=1)
-                .output('pipe:', vframes=1, format='image2', vcodec='rawvideo', pix_fmt='rgb24')
+                .output('pipe:', vframes=1, format='rawvideo', pix_fmt='rgb24')
                 .run(capture_stdout=True, capture_stderr=True)
             )
-            frame = np.frombuffer(out, np.uint8).reshape([-1, 3])
+            frame = np.frombuffer(out, np.uint8)
             frames.append(frame)
 
         # Compare each frame with the first frame
