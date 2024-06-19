@@ -3,6 +3,9 @@ import time
 import requests
 import subprocess
 import logging
+import numpy as np
+import ffmpeg
+
 from logging.handlers import TimedRotatingFileHandler
 from yt_dlp import YoutubeDL
 
@@ -101,6 +104,12 @@ def download_song(video_url, song_title, artist, album, genre):
 
     downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
 
+    # Check if the downloaded file is a static image
+    if is_static_image_for_5_seconds_ffmpeg(downloaded_file):
+        os.remove(downloaded_file)
+        logger.info(f'Deleted static image file: {downloaded_file}')
+        return
+
     # Add metadata
     tagged_file_name = f'{artist} - {song_title}_tagged.mp4'
     ffmpeg_command = [
@@ -119,6 +128,33 @@ def download_song(video_url, song_title, artist, album, genre):
     # Replace the original file with the tagged file
     os.rename(os.path.join(DOWNLOAD_PATH, tagged_file_name), downloaded_file)
     logger.info(f'Successfully processed {song_title} by {artist}')
+    
+def is_static_image_for_5_seconds_ffmpeg(video_path):
+    try:
+        # Extract frames from the first 5 seconds
+        duration = 5  # seconds
+        frame_interval = 1  # Check every second
+
+        frames = []
+        for t in range(0, duration):
+            out, _ = (
+                ffmpeg
+                .input(video_path, ss=t, vframes=1)
+                .output('pipe:', vframes=1, format='image2', vcodec='rawvideo', pix_fmt='rgb24')
+                .run(capture_stdout=True, capture_stderr=True)
+            )
+            frame = np.frombuffer(out, np.uint8).reshape([-1, 3])
+            frames.append(frame)
+
+        # Compare each frame with the first frame
+        first_frame = frames[0]
+        for frame in frames[1:]:
+            if not np.array_equal(first_frame, frame):
+                return False
+        return True
+    except Exception as e:
+        logger.error(f"Error checking if video is static image: {e}")
+        return False
 
 if __name__ == "__main__":
     last_downloaded_track = None
