@@ -4,7 +4,7 @@ import requests
 import subprocess
 import logging
 import numpy as np
-import ffmpeg-python
+import ffmpeg
 
 from logging.handlers import TimedRotatingFileHandler
 from yt_dlp import YoutubeDL
@@ -129,21 +129,29 @@ def download_song(video_url, song_title, artist, album, genre):
     os.rename(os.path.join(DOWNLOAD_PATH, tagged_file_name), downloaded_file)
     logger.info(f'Successfully processed {song_title} by {artist}')
     
+def extract_frame(video_path, time):
+    cmd = [
+        'ffmpeg',
+        '-ss', str(time),
+        '-i', video_path,
+        '-frames:v', '1',
+        '-f', 'image2pipe',
+        '-pix_fmt', 'rgb24',
+        '-vcodec', 'rawvideo',
+        '-'
+    ]
+    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    if result.returncode != 0:
+        raise Exception(f"Error extracting frame at {time} seconds: {result.stderr.decode()}")
+    return np.frombuffer(result.stdout, np.uint8)
+
 def is_static_image_for_5_seconds_ffmpeg(video_path):
     try:
         # Extract frames from the first 5 seconds
         duration = 5  # seconds
-        frame_interval = 1  # Check every second
-
         frames = []
         for t in range(0, duration):
-            out, _ = (
-                ffmpeg
-                .input(video_path, ss=t, vframes=1)
-                .output('pipe:', vframes=1, format='rawvideo', pix_fmt='rgb24')
-                .run(capture_stdout=True, capture_stderr=True)
-            )
-            frame = np.frombuffer(out, np.uint8)
+            frame = extract_frame(video_path, t)
             frames.append(frame)
 
         # Compare each frame with the first frame
@@ -155,7 +163,7 @@ def is_static_image_for_5_seconds_ffmpeg(video_path):
     except Exception as e:
         logger.error(f"Error checking if video is static image: {e}")
         return False
-        
+
 def delete_if_static(video_path):
     if is_static_image_for_5_seconds_ffmpeg(video_path):
         try:
