@@ -130,16 +130,16 @@ def download_song(video_url, song_title, artist, album, genre):
         return
 
     # Merge video and audio with color space handling
-    command = [
+    merge_command = [
         'ffmpeg', '-i', downloaded_video, '-i', downloaded_audio,
         '-c:v', 'copy', '-c:a', 'aac', '-strict', 'experimental',
         '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709',
         final_file
     ]
-    result = subprocess.run(command, capture_output=True, text=True)
+    merge_result = subprocess.run(merge_command, capture_output=True, text=True)
 
-    if result.returncode != 0:
-        logger.error(f"ffmpeg merge failed: {result.stderr}")
+    if merge_result.returncode != 0:
+        logger.error(f"ffmpeg merge failed: {merge_result.stderr}")
         return
 
     # Extract video ID from the URL
@@ -154,8 +154,10 @@ def download_song(video_url, song_title, artist, album, genre):
     logger.info(f'Successfully processed {song_title} by {artist}')
 
     # Cleanup temporary files
-    os.remove(downloaded_video)
-    os.remove(downloaded_audio)
+    if os.path.exists(downloaded_video):
+        os.remove(downloaded_video)
+    if os.path.exists(downloaded_audio):
+        os.remove(downloaded_audio)
 
 if __name__ == "__main__":
     last_downloaded_track = None
