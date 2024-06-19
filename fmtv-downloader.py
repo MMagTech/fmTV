@@ -128,51 +128,6 @@ def download_song(video_url, song_title, artist, album, genre):
     # Replace the original file with the tagged file
     os.rename(os.path.join(DOWNLOAD_PATH, tagged_file_name), downloaded_file)
     logger.info(f'Successfully processed {song_title} by {artist}')
-    
-def extract_frame(video_path, time):
-    cmd = [
-        'ffmpeg',
-        '-ss', str(time),
-        '-i', video_path,
-        '-frames:v', '1',
-        '-f', 'image2pipe',
-        '-pix_fmt', 'rgb24',
-        '-vcodec', 'rawvideo',
-        '-'
-    ]
-    result = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    if result.returncode != 0:
-        raise Exception(f"Error extracting frame at {time} seconds: {result.stderr.decode()}")
-    return np.frombuffer(result.stdout, np.uint8)
-
-def is_static_image_for_5_seconds_ffmpeg(video_path):
-    try:
-        # Extract frames from the first 5 seconds
-        duration = 5  # seconds
-        frames = []
-        for t in range(0, duration):
-            frame = extract_frame(video_path, t)
-            frames.append(frame)
-
-        # Compare each frame with the first frame
-        first_frame = frames[0]
-        for frame in frames[1:]:
-            if not np.array_equal(first_frame, frame):
-                return False
-        return True
-    except Exception as e:
-        logger.error(f"Error checking if video is static image: {e}")
-        return False
-
-def delete_if_static(video_path):
-    if is_static_image_for_5_seconds_ffmpeg(video_path):
-        try:
-            os.remove(video_path)
-            logger.info(f"Deleted static image: {video_path}")
-        except OSError as e:
-            logger.error(f"Error deleting file: {e}")
-    else:
-        logger.info(f"File is not a static image: {video_path}")
 
 if __name__ == "__main__":
     last_downloaded_track = None
