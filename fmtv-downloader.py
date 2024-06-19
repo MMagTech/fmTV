@@ -13,6 +13,7 @@ from googleapiclient.discovery import build
 API_KEY = os.getenv('LASTFM_API_KEY', 'your_lastfm_api_key')
 USERNAME = os.getenv('LASTFM_USERNAME', 'your_lastfm_username')
 DOWNLOAD_PATH = os.getenv('DOWNLOAD_PATH', '/downloads')
+FINAL_OUTPUT_PATH = os.getenv('FINAL_OUTPUT_PATH', '/final_output')
 APP_DATA_PATH = os.getenv('APP_DATA_PATH', '/appdata')
 POLLING_INTERVAL = int(os.getenv('POLLING_INTERVAL', '300'))  # Default to 300 seconds (5 minutes)
 YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
@@ -35,7 +36,7 @@ logger.addHandler(handler)
 def get_recent_tracks():
     logger.info('Fetching recent tracks from Last.fm')
     response = requests.get(LASTFM_URL)
-    if response.status_code == 200:
+    if response.status_code == 200):
         data = response.json()
         recent_tracks = data['recenttracks']['track']
         logger.info(f'Fetched {len(recent_tracks)} tracks')
@@ -47,7 +48,7 @@ def get_recent_tracks():
 def get_track_info(artist, track):
     url = LASTFM_TRACK_INFO_URL.format(artist=artist, track=track)
     response = requests.get(url)
-    if response.status_code == 200:
+    if response.status_code == 200):
         data = response.json()
         if 'track' in data:
             track_info = data['track']
@@ -63,6 +64,7 @@ def search_official_video(song_title, artist):
         'noplaylist': True,
         'format': 'bestvideo+bestaudio/best',
         'extract_flat': 'in_playlist',
+        'force_overwrites': True,
     }
     with YoutubeDL(ydl_opts) as ydl:
         results = ydl.extract_info(query, download=False)
@@ -72,7 +74,7 @@ def search_official_video(song_title, artist):
 
 def download_thumbnail(thumbnail_url, output_path):
     response = requests.get(thumbnail_url)
-    if response.status_code == 200:
+    if response.status_code == 200):
         image = Image.open(BytesIO(response.content))
         thumbnail_path = os.path.join(output_path, 'thumbnail.jpg')
         image.save(thumbnail_path)
@@ -107,15 +109,17 @@ def download_song(video_url, song_title, artist, album, genre):
     audio_file_name = f'{artist} - {song_title}.m4a'
     downloaded_video = os.path.join(DOWNLOAD_PATH, video_file_name)
     downloaded_audio = os.path.join(DOWNLOAD_PATH, audio_file_name)
-    final_file = os.path.join(DOWNLOAD_PATH, video_file_name)
+    final_file = os.path.join(FINAL_OUTPUT_PATH, video_file_name)
 
     ydl_opts_video = {
         'format': 'bestvideo',
         'outtmpl': downloaded_video,
+        'force_overwrites': True,
     }
     ydl_opts_audio = {
         'format': 'bestaudio',
         'outtmpl': downloaded_audio,
+        'force_overwrites': True,
     }
 
     with YoutubeDL(ydl_opts_video) as ydl:
@@ -147,7 +151,7 @@ def download_song(video_url, song_title, artist, album, genre):
     title, description, tags, thumbnail_url = get_youtube_metadata(video_id)
 
     if thumbnail_url:
-        thumbnail_path = download_thumbnail(thumbnail_url, DOWNLOAD_PATH)
+        thumbnail_path = download_thumbnail(thumbnail_url, FINAL_OUTPUT_PATH)
         if thumbnail_path:
             set_video_thumbnail(final_file, thumbnail_path)
 
@@ -178,10 +182,10 @@ if __name__ == "__main__":
                 if most_recent_track != last_downloaded_track:
                     last_downloaded_track = most_recent_track
 
-                    # Check if the video file already exists
+                    # Check if the video file already exists in the final output folder
                     file_name = f'{artist} - {song_title}.mp4'
-                    downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
-                    if not os.path.exists(downloaded_file):
+                    final_file = os.path.join(FINAL_OUTPUT_PATH, file_name)
+                    if not os.path.exists(final_file):
                         # Search and download the official video
                         video_url = search_official_video(song_title, artist)
                         if video_url:
@@ -191,7 +195,7 @@ if __name__ == "__main__":
                         else:
                             logger.info('No official video found')
                     else:
-                        logger.info(f'Video already downloaded: {downloaded_file}')
+                        logger.info(f'Video already downloaded: {final_file}')
             else:
                 logger.info('No recent tracks found')
 
