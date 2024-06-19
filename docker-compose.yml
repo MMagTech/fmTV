@@ -7,10 +7,10 @@ services:
     environment:
       - LASTFM_API_KEY=your_lastfm_api_key
       - LASTFM_USERNAME=your_lastfm_username
+      - POLLING_INTERVAL=300  # Adjust as needed
       - DOWNLOAD_PATH=/downloads
       - APP_DATA_PATH=/appdata
-      - POLLING_INTERVAL=300  # Adjust as needed
-      - START_TIMESTAMP=1624147200  # Example start timestamp (replace with your desired value)
+
 
     volumes:
       - ./downloads:/downloads  # Directory for downloaded files

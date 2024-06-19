@@ -10,11 +10,11 @@ from logging.handlers import TimedRotatingFileHandler
 from yt_dlp import YoutubeDL
 
 # Environment variables
-API_KEY = os.getenv('LASTFM_API_KEY', 'your_lastfm_api_key')
 USERNAME = os.getenv('LASTFM_USERNAME', 'your_lastfm_username')
-DOWNLOAD_PATH = os.getenv('DOWNLOAD_PATH', '/downloads')
-APP_DATA_PATH = os.getenv('APP_DATA_PATH', '/appdata')
+API_KEY = os.getenv('LASTFM_API_KEY', 'your_lastfm_api_key')
 POLLING_INTERVAL = int(os.getenv('POLLING_INTERVAL', '300'))  # Default to 300 seconds (5 minutes)
+DOWNLOAD_PATH = '/downloads'  # Hardcoded path
+APP_DATA_PATH = '/appdata'  # Hardcoded path
 
 LASTFM_URL = f'http://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user={USERNAME}&api_key={API_KEY}&format=json'
 LASTFM_TRACK_INFO_URL = f'http://ws.audioscrobbler.com/2.0/?method=track.getInfo&api_key={API_KEY}&format=json&artist={{artist}}&track={{track}}'
