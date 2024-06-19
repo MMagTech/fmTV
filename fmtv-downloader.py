@@ -63,23 +63,11 @@ def search_official_video(song_title, artist):
             for entry in result['entries']:
                 title = entry['title'].lower()
                 if 'official' in title and 'video' in title and artist.lower() in title and song_title.lower() in title:
-                    return {
-                        'id': entry['id'],
-                        'title': entry['title'],
-                        'uploader': entry['uploader'],
-                        'upload_date': entry['upload_date'],
-                        'duration': entry['duration'],
-                        'view_count': entry['view_count'],
-                        'like_count': entry['like_count'],
-                        'description': entry['description'],
-                        'tags': entry.get('tags', []),
-                        'webpage_url': entry['webpage_url'],
-                        'thumbnail': entry['thumbnail']
-                    }
+                    return entry['webpage_url']
     logger.info(f'No official video found for {artist} - {song_title}')
     return None
 
-def download_song(video_info, song_title, artist, album, genre):
+def download_song(video_url, song_title, artist, album, genre):
     file_name = f'{artist} - {song_title}.mp4'
     ydl_opts = {
         'format': 'bestvideo+bestaudio/best',
@@ -87,48 +75,28 @@ def download_song(video_info, song_title, artist, album, genre):
         'merge_output_format': 'mp4'
     }
     with YoutubeDL(ydl_opts) as ydl:
-        ydl.download([video_info['webpage_url']])
+        ydl.download([video_url])
 
     downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
 
-    # Download thumbnail
-    thumbnail_url = video_info['thumbnail']
-    thumbnail_path = os.path.join(DOWNLOAD_PATH, f'{artist} - {song_title}.jpg')
-    response = requests.get(thumbnail_url)
-    with open(thumbnail_path, 'wb') as f:
-        f.write(response.content)
-
-    # Add metadata and embed thumbnail
+    # Add metadata
     tagged_file_name = f'{artist} - {song_title}_tagged.mp4'
     ffmpeg_command = [
         'ffmpeg',
         '-i', downloaded_file,
-        '-i', thumbnail_path,
-        '-map', '0',
-        '-map', '1',
         '-metadata', f'title={song_title}',
         '-metadata', f'artist={artist}',
         '-metadata', f'album={album}',
         '-metadata', f'genre={genre}',
-        '-metadata', f'description={video_info["description"]}',
-        '-metadata', f'uploader={video_info["uploader"]}',
-        '-metadata', f'date={video_info["upload_date"]}',
-        '-metadata', f'duration={video_info["duration"]}',
-        '-metadata', f'view_count={video_info["view_count"]}',
-        '-metadata', f'like_count={video_info["like_count"]}',
-        '-disposition:v:1', 'attached_pic',
         '-codec', 'copy',
         os.path.join(DOWNLOAD_PATH, tagged_file_name)
     ]
-    logger.info(f'Adding metadata and thumbnail for {song_title} by {artist}')
+    logger.info(f'Adding metadata for {song_title} by {artist}')
     subprocess.run(ffmpeg_command, check=True)
 
     # Replace the original file with the tagged file
     os.rename(os.path.join(DOWNLOAD_PATH, tagged_file_name), downloaded_file)
     logger.info(f'Successfully processed {song_title} by {artist}')
-
-    # Remove the downloaded thumbnail file
-    os.remove(thumbnail_path)
 
 if __name__ == "__main__":
     last_downloaded_track = None
@@ -154,11 +122,11 @@ if __name__ == "__main__":
                     downloaded_file = os.path.join(DOWNLOAD_PATH, file_name)
                     if not os.path.exists(downloaded_file):
                         # Search and download the official video
-                        video_info = search_official_video(song_title, artist)
-                        if video_info:
-                            logger.info(f'Found official video: {video_info["webpage_url"]}')
+                        video_url = search_official_video(song_title, artist)
+                        if video_url:
+                            logger.info(f'Found official video: {video_url}')
                             genre = get_track_info(artist, song_title)
-                            download_song(video_info, song_title, artist, album, genre)
+                            download_song(video_url, song_title, artist, album, genre)
                         else:
                             logger.info('No official video found')
                     else:
